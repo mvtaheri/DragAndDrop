@@ -1,10 +1,8 @@
 package com.vahid.drageanddrop
 
-import android.view.RoundedCorner
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +16,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,12 +31,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun MainScreen(
-    mainViewModel: MainViewModle
+    mainViewModel: MainViewModel
 ) {
     val screenWidth = LocalConfiguration.current.screenWidthDp
+    val state = mainViewModel.persons.collectAsState()
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(50.dp),
@@ -44,74 +49,109 @@ fun MainScreen(
                 .fillMaxWidth()
                 .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceAround
         ) {
-            mainViewModel.items.forEach { person ->
-                DragTarget(
-                    dataToDrop = person,
-                    viewModel = mainViewModel
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(Dp(screenWidth / 5f))
-                            .clip(RoundedCornerShape(15.dp))
-                            .shadow(5.dp, RoundedCornerShape(15.dp))
-                            .background(person.backgroundColor, RoundedCornerShape(15.dp)),
-                        contentAlignment = Alignment.Center
+
+            state.value.persons.forEach { person ->
+                if (!person.isDraged)
+                    DragTarget(
+                        dataToDrop = person,
+                        viewModel = mainViewModel
                     ) {
-                        Text(
-                            text = person.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(Dp(screenWidth / 5f))
+                                .clip(RoundedCornerShape(15.dp))
+                                .shadow(5.dp, RoundedCornerShape(15.dp))
+                                .background(person.backgroundColor, RoundedCornerShape(15.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (person.isDraged) "" else person.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Black,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+            ) {
+                repeat(3) { row ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Absolute.Center
+                    ) {
+                        repeat(3) { column ->
+                            var person by remember {
+                                mutableStateOf("")
+                            }
+                            DropItem<PersonUiItem>(
+                                modifier = Modifier.size(Dp(screenWidth / 3.5f))
+                            ) { isInBound, personItem ->
+                                if (personItem != null) {
+                                    LaunchedEffect(key1 = personItem) {
+                                        mainViewModel.addPerson(personItem)
+                                        person = personItem.name
+                                    }
+                                }
+                                if (isInBound) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .border(
+                                                1.dp,
+                                                color = Color.Red,
+                                                shape = RoundedCornerShape(15.dp)
+                                            )
+                                            .background(
+                                                Color.Gray.copy(0.5f),
+                                                RoundedCornerShape(15.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = person ?: "",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color.Black
+                                        )
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .border(
+                                                1.dp,
+                                                color = Color.White,
+                                                shape = RoundedCornerShape(15.dp)
+                                            )
+                                            .background(
+                                                Color.Black.copy(0.6f),
+                                                RoundedCornerShape(15.dp)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = person ?: "",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+
                 }
             }
         }
-        AnimatedVisibility(
-            visible = mainViewModel.isCurrentlyDragging,
-            enter = slideInHorizontally(initialOffsetX = { it })
-        ) {
-            DropItem<PersonUiItem>(
-                modifier = Modifier.size(Dp(screenWidth / 3.5f))
-            ) { isInBound, personItem ->
-                if (personItem != null) {
-                    LaunchedEffect(key1 = personItem) {
-                        mainViewModel.addPerson(personItem)
-                    }
-                }
-                if (isInBound) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .border(1.dp, color = Color.Red, shape = RoundedCornerShape(15.dp))
-                            .background(Color.Gray.copy(0.5f), RoundedCornerShape(15.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Add Person",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Black
-                        )
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .border(1.dp, color = Color.White, shape = RoundedCornerShape(15.dp))
-                            .background(Color.Black.copy(0.6f), RoundedCornerShape(15.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Add Person",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White
-                        )
-                    }
-                }
-            }
-        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()

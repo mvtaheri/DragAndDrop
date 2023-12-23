@@ -1,6 +1,8 @@
 package com.vahid.drageanddrop
 
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,18 +28,20 @@ internal val LocalDragTargetInfo = compositionLocalOf { DragTargetInfo() }
 fun <T> DragTarget(
     modifier: Modifier = Modifier,
     dataToDrop: T,
-    viewModel: MainViewModle,
+    viewModel: MainViewModel,
     content: @Composable (() -> Unit)
 ) {
     var currentPosition by remember { mutableStateOf(Offset.Zero) }
     val currentState = LocalDragTargetInfo.current
     Box(modifier = modifier
         .onGloballyPositioned {
-            currentPosition = it.localToWindow(Offset.Zero) }
+            currentPosition = it.localToWindow(Offset.Zero)
+        }
         .pointerInput(Unit) {
+
             detectDragGesturesAfterLongPress(
                 onDragStart = {
-                    viewModel.startDragging()
+                    viewModel.startDragging(dataToDrop)
                     currentState.dataToDrop = dataToDrop
                     currentState.isDragging = true
                     currentState.dragPosition = currentPosition + it
@@ -48,12 +52,12 @@ fun <T> DragTarget(
                     currentState.dragOffset += Offset(dragAmount.x, dragAmount.y)
                 },
                 onDragEnd = {
-                    viewModel.stopDragging()
+                    viewModel.stopDragging(dataToDrop)
                     currentState.dragOffset = Offset.Zero
                     currentState.isDragging = false
                 },
                 onDragCancel = {
-                    viewModel.stopDragging()
+                    viewModel.cancelDragging(dataToDrop)
                     currentState.dragOffset = Offset.Zero
                     currentState.isDragging = false
                 }
@@ -92,6 +96,7 @@ fun DraggableScreen(
     val state = remember {
         DragTargetInfo()
     }
+
     CompositionLocalProvider(
         LocalDragTargetInfo provides state
     ) {

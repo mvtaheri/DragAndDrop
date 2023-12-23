@@ -3,7 +3,8 @@ package com.vahid.drageanddrop
 import androidx.compose.ui.graphics.Color
 
 data class PersonUiItem(
-    val name: String,
-    val id: String,
-    val backgroundColor: Color
+    var name: String,
+    val id: Int,
+    val backgroundColor: Color,
+    var isDraged: Boolean = false
 )
